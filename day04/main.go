@@ -90,17 +90,20 @@ func part2(lines []string) any {
 
 	A := "A"
 
-	adjacent1 := ""
-	adjacent2 := ""
-	for i, line := range lines[1 : len(lines)-1] {
-		i += 1
-		for j, char := range line[1 : len(line)-1] {
-			j += 1
+	var adjacent1 string
+	var adjacent2 string
+
+	for i, line := range lines {
+		if i == 0 || i == len(lines)-1 {
+			continue
+		}
+		for j, char := range line {
+			if j == 0 || j == len(line)-1 {
+				continue
+			}
 			if string(char) == A {
 				adjacent1 = string(lines[i-1][j-1]) + A + string(lines[i+1][j+1])
 				adjacent2 = string(lines[i-1][j+1]) + A + string(lines[i+1][j-1])
-
-				fmt.Println(adjacent1, adjacent2)
 
 				if (adjacent1 == "MAS" || adjacent1 == "SAM") && (adjacent2 == "MAS" || adjacent2 == "SAM") {
 					result += 1
