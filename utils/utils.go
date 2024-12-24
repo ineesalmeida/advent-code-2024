@@ -39,3 +39,19 @@ func PrintMatrixRunes(warehouse [][]rune) {
 		fmt.Printf("\n")
 	}
 }
+
+func Abs(integer int) int {
+	if integer < 0 {
+		return -integer
+	}
+	return integer
+}
+
+func Contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
