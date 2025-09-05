@@ -73,7 +73,7 @@ func part1(lines []string) any {
 				savings -= 2
 
 				if savings >= SAVING_THREADHOLD {
-					fmt.Println("Saving", i, j, savings)
+					// fmt.Println("Saving", i, j, savings)
 					result += 1
 				}
 			}
@@ -164,7 +164,7 @@ func goThroughRaceTrack(lines []string) {
 	utils.PrintMatrix(track)
 }
 
-var SAVING_THREADHOLD = 76
+var SAVING_THREADHOLD = 1
 var RADIUS = 20
 
 func part2(lines []string) any {
@@ -181,6 +181,10 @@ func part2(lines []string) any {
 			if j == 0 || j == len(row)-1 {
 				continue
 			}
+
+			// i := 3
+			// j := 1
+
 			// skip any non walls
 			if c == 0 {
 				continue
@@ -189,34 +193,38 @@ func part2(lines []string) any {
 			// check all around
 			ii := 0
 			jj := 0
-			// 1, 19
-			// 2, 18
 			for ii < RADIUS {
-				if i-ii < 0 || i+ii >= len(track) {
-					ii += 1
-					continue
-				}
 				for jj < RADIUS-ii {
-					if j-jj < 0 || j+jj >= len(track[0]) {
-						jj += 1
-						continue
-					}
 
-					if track[i+ii][j+jj]-track[i][j]-ii-jj >= SAVING_THREADHOLD {
-						fmt.Println("here 1", i, j, ii, jj)
-						result += 1
+					if i-ii > 0 {
+						if j-jj > 0 {
+
+							if track[i-ii][j-jj]-track[i][j]-ii-jj >= SAVING_THREADHOLD {
+								fmt.Println("here 2", i, j, ii, jj)
+								result += 1
+							}
+						}
+						if j+jj < len(track[0]) {
+							if track[i-ii][j+jj]-track[i][j]-ii-jj >= SAVING_THREADHOLD {
+								fmt.Println("here 4", i, j, ii, jj)
+								result += 1
+							}
+						}
 					}
-					if track[i-ii][j-jj]-track[i][j]-ii-jj >= SAVING_THREADHOLD {
-						fmt.Println("here 2", i, j, ii, jj)
-						result += 1
-					}
-					if track[i+ii][j-jj]-track[i][j]-ii-jj >= SAVING_THREADHOLD {
-						fmt.Println("here 3", i, j, ii, jj)
-						result += 1
-					}
-					if track[i-ii][j+jj]-track[i][j]-ii-jj >= SAVING_THREADHOLD {
-						fmt.Println("here 4", i, j, ii, jj)
-						result += 1
+					if i+ii < len(track) {
+						if j-jj > 0 {
+							if track[i+ii][j-jj]-track[i][j]-ii-jj >= SAVING_THREADHOLD {
+								fmt.Println("here 3", i, j, ii, jj)
+								result += 1
+							}
+						}
+						if j+jj < len(track[0]) {
+
+							if track[i+ii][j+jj]-track[i][j]-ii-jj >= SAVING_THREADHOLD {
+								fmt.Println("here 1", i, j, ii, jj)
+								result += 1
+							}
+						}
 					}
 
 					jj += 1
