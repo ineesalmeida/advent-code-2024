@@ -4,6 +4,7 @@ import (
 	"advent-code/aoc2024/utils"
 	"fmt"
 	"log"
+	"maps"
 	"time"
 )
 
@@ -28,116 +29,228 @@ func main() {
 	)
 }
 
-func part1(lines []string) any {
-	initial_pos := parseLines(lines)
-	return walk(initial_pos, lines, 0)
+type Direction int
+
+const (
+	N Direction = iota + 1
+	E
+	S
+	W
+)
+
+type step struct {
+	x        int
+	y        int
+	dir      Direction
+	value    int
+	prevStep *step
 }
 
-// directions
-// EAST 1
-// DOWN 2
-// WEST 3
-// TOP  4
+func (s *step) isTarget() bool {
+	// fmt.Println("TARGET:", target, "X:", s.x, "Y:", s.y)
+	return s.x == target[1] && s.y == target[0]
+}
 
-func parseLines(lines []string) [3]int {
-	initial_pos := [3]int{}
+func (s *step) code() string {
+	return fmt.Sprintf("%v,%v,%d", s.x, s.y, s.dir)
+}
+
+type Stack struct {
+	items []step
+}
+
+var target = [2]int{}
+
+func (s *Stack) Push(data step) {
+	s.items = append(s.items, data)
+}
+
+func (s *Stack) Pop() (step, bool) {
+	if s.IsEmpty() {
+		return step{}, false
+	}
+	top := s.items[len(s.items)-1]
+	s.items = s.items[:len(s.items)-1]
+	return top, true
+}
+
+func (s *Stack) IsEmpty() bool {
+	if len(s.items) == 0 {
+		return true
+	}
+	return false
+}
+
+var seen = make(map[string]int)
+
+func part1(nodes []string) any {
+
+	stack := Stack{}
+	parseInput(nodes, &stack)
+	// fmt.Println(target)
+
+	result := -1
+	for true {
+		nextStep, ok := stack.Pop()
+		if !ok {
+			break
+		}
+		if result != -1 && nextStep.value >= result {
+			// fmt.Println("DEBUG: too large!", nextStep.value)
+			continue
+		}
+		if nextStep.isTarget() {
+			// fmt.Println("DEBUG: found result!", nextStep.value)
+			result = nextStep.value
+			continue
+		} else if v, ok := seen[nextStep.code()]; ok && v < nextStep.value {
+			// fmt.Println("DEBUG: have seen", nextStep.code())
+			continue
+		}
+		seen[nextStep.code()] = nextStep.value
+
+		nextSteps(nextStep, &stack, nodes)
+		// fmt.Println(len(seen), len(stack.items))
+	}
+	return result
+}
+
+func abs(v int) int {
+	return max(v, -v)
+}
+
+// Check for possible enxt steps
+func nextSteps(s step, stack *Stack, nodes []string) {
+
+	if nodes[s.y+1][s.x] != '#' {
+		dv := abs(int(s.dir - S)) // 0, 1, 2, 3
+		if dv == 3 {
+			dv = 1 // if we need to rotate 3 times, we can torate once in the opposite dir
+		}
+		stack.Push(step{
+			x:        s.x,
+			y:        s.y + 1,
+			dir:      S,
+			value:    s.value + dv*1000 + 1,
+			prevStep: &s,
+		})
+	}
+	if nodes[s.y-1][s.x] != '#' {
+		dv := abs(int(s.dir - N))
+		if dv == 3 {
+			dv = 1 // if we need to rotate 3 times, we can torate once in the opposite dir
+		}
+		stack.Push(step{
+			x:        s.x,
+			y:        s.y - 1,
+			dir:      N,
+			value:    s.value + dv*1000 + 1,
+			prevStep: &s,
+		})
+	}
+	if nodes[s.y][s.x+1] != '#' {
+		dv := abs(int(s.dir - E))
+		if dv == 3 {
+			dv = 1 // if we need to rotate 3 times, we can torate once in the opposite dir
+		}
+		stack.Push(step{
+			x:        s.x + 1,
+			y:        s.y,
+			dir:      E,
+			value:    s.value + dv*1000 + 1,
+			prevStep: &s,
+		})
+	}
+	if nodes[s.y][s.x-1] != '#' {
+		dv := abs(int(s.dir - W))
+		if dv == 3 {
+			dv = 1 // if we need to rotate 3 times, we can torate once in the opposite dir
+		}
+		stack.Push(step{
+			x:        s.x - 1,
+			y:        s.y,
+			dir:      W,
+			value:    s.value + dv*1000 + 1,
+			prevStep: &s,
+		})
+	}
+}
+
+func parseInput(lines []string, stack *Stack) {
 	for i, line := range lines {
-		for j, val := range line {
-			if val == 'S' {
-				initial_pos = [3]int{i, j, 1}
-				return initial_pos
+		for j, node := range line {
+			if node == 'S' {
+				stack.Push(step{
+					x:     j,
+					y:     i,
+					dir:   E,
+					value: 0,
+				})
+			} else if node == 'E' {
+				target[0] = i
+				target[1] = j
 			}
 		}
 	}
-	return initial_pos
 }
 
-func walk(pos [3]int, lines []string, n_moves int) int {
-	// fmt.Println("Checking", pos)
-	// fmt.Println("Checking", curr_path)
-	if n_moves > 500 {
-		// seen it before! it's a loop
-		return -1
-	}
-	n_moves += 1
+func part2(nodes []string) any {
 
-	// input := bufio.NewScanner(os.Stdin)
-	// _ = input.Scan()
+	stack := Stack{}
+	parseInput(nodes, &stack)
+	fmt.Println(target)
 
-	fi, fj, fd := pos[0], pos[1], pos[2]
-	li, lj, ld := pos[0], pos[1], pos[2]
-	ri, rj, rd := pos[0], pos[1], pos[2]
-
-	if pos[2] == 1 { // EAST
-		fj += 1
-		li -= 1
-		ri += 1
-	} else if pos[2] == 2 { //SOUTH
-		fi += 1
-		lj += 1
-		rj -= 1
-	} else if pos[2] == 3 { // WEST
-		fj -= 1
-		li += 1
-		ri -= 1
-	} else { //NORTH
-		fi -= 1
-		lj -= 1
-		rj += 1
-	}
-
-	ld -= 1
-	if ld == 0 {
-		ld = 4
-	}
-	rd += 1
-	if rd == 5 {
-		rd = 1
-	}
-
-	if lines[fi][fj] == 'E' {
-		// reached target
-		return 1
-	} else if lines[li][lj] == 'E' || lines[ri][rj] == 'E' {
-		return 1001
-	}
-
-	lowest_path := -1
-
-	if lines[fi][fj] != '#' {
-		// if not a wall, go front
-		fw := walk([3]int{fi, fj, fd}, lines, n_moves)
-		if fw != -1 {
-			lowest_path = fw + 1
-			lowest_path = fw + 1
+	bestSeats := make([]step, 0)
+	result := -1
+	for true {
+		nextStep, ok := stack.Pop()
+		if !ok {
+			break
 		}
-	}
-	if lines[ri][rj] != '#' {
-		// if not a wall, try going left
-		rw := walk([3]int{ri, rj, rd}, lines, n_moves)
-		if rw != -1 && (lowest_path == -1 || rw+1001 <= lowest_path) {
-			lowest_path = rw + 1001
+		if result != -1 && nextStep.value > result {
+			// fmt.Println("DEBUG: too large!", nextStep.value)
+			continue
 		}
-	}
-	if lines[li][lj] != '#' {
-		// if not a wall, try going left
-		lw := walk([3]int{li, lj, ld}, lines, n_moves)
-		if lw != -1 && (lowest_path == -1 || lw+1001 <= lowest_path) {
-			lowest_path = lw + 1001
+		if nextStep.isTarget() {
+			if result == -1 || nextStep.value < result {
+				fmt.Println("DEBUG: found better result!", result, nextStep.value)
+				result = nextStep.value
+				bestSeats = nil
+			} else {
+				// fmt.Println("DEBUG: found equal result!", result, nextStep.value)
+			}
+			bestSeats = append(bestSeats, nextStep)
+			// fmt.Println("DEBUG: bestSeats:", len(bestSeats))
+
+			continue
+		} else if result == nextStep.value {
+			continue
+		} else if v, ok := seen[nextStep.code()]; ok && v < nextStep.value {
+			// fmt.Println("DEBUG: have seen", nextStep.code())
+			continue
 		}
+		seen[nextStep.code()] = nextStep.value
+
+		nextSteps(nextStep, &stack, nodes)
+		// fmt.Println(len(seen), len(stack.items))
 	}
-	// fmt.Println(lowest_path)
-	return lowest_path
+
+	seatsMap := make(map[string]int)
+	for _, s := range bestSeats {
+		maps.Copy(seatsMap, backtrack(s))
+	}
+	return len(seatsMap)
 }
 
-// func copyMap(og map[[2]int]bool) map[[2]int]bool {
-// 	new := make(map[[2]int]bool)
-// 	for k, v := range og {
-// 		new[k] = v
-// 	}
-// 	return new
-// }
-
-func part2(lines []string) any {
-	return nil
+func backtrack(s step) map[string]int {
+	seats := make(map[string]int)
+	for true {
+		seats[fmt.Sprintf("%v,%v", s.x, s.y)]++
+		if s.prevStep == nil {
+			break
+		}
+		s = *s.prevStep
+	}
+	// fmt.Println("DEBUG: seats:", seats)
+	return seats
 }
