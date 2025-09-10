@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func main() {
@@ -32,30 +34,50 @@ func main() {
 
 func part1(lines []string) any {
 	result := 0
+	numpad := Pad{
+		keys:            numKeys,
+		forbiddenKey:    [2]int{0, 3},
+		position:        numKeys['A'],
+		initialPosition: numKeys['A'],
+	}
+	movepad1 := Pad{
+		keys:            moveKeys,
+		forbiddenKey:    [2]int{0, 0},
+		position:        moveKeys['A'],
+		initialPosition: moveKeys['A'],
+	}
+	movepad2 := Pad{
+		keys:            moveKeys,
+		forbiddenKey:    [2]int{0, 0},
+		position:        moveKeys['A'],
+		initialPosition: moveKeys['A'],
+	}
 	for _, line := range lines {
 		n, _ := strconv.Atoi(line[:3])
-		numpad := Pad{
-			keys:         numKeys,
-			forbiddenKey: [2]int{0, 3},
-			position:     [2]int{3, 2},
-		}
-		movepad1 := Pad{
-			keys:         moveKeys,
-			forbiddenKey: [2]int{0, 0},
-			position:     [2]int{0, 2},
-		}
-		movepad2 := Pad{
-			keys:         moveKeys,
-			forbiddenKey: [2]int{0, 0},
-			position:     [2]int{0, 2},
-		}
+		numpad.Reset()
+		movepad1.Reset()
+		movepad2.Reset()
 		moves := numpad.MovesToCode(line)
 		moves2 := movepad1.MovesToCode(moves)
 		moves3 := movepad2.MovesToCode(moves2)
 		nPress := len(moves3)
 		fmt.Println("=================", n, nPress)
 		result += nPress * n
+
+		// TESTS TO VERIFY THE RESULT
+		m2 := TestInputToCode(&movepad2, moves3)
+		m1 := TestInputToCode(&movepad1, m2)
+		l := TestInputToCode(&numpad, m1)
+		testing := assert.New(nil)
+		testing.Equal(moves2, m2)
+		testing.Equal(moves, m1)
+		testing.Equal(line, l)
+		testing.Equal(len(line), strings.Count(moves, "A"))
+		testing.Equal(len(moves), strings.Count(moves2, "A"))
+		testing.Equal(len(moves2), strings.Count(moves3, "A"))
+		// END TESTS
 	}
+
 	return result
 }
 
@@ -96,9 +118,14 @@ var moveKeys = map[rune][2]int{
 }
 
 type Pad struct {
-	keys         map[rune][2]int
-	forbiddenKey [2]int
-	position     [2]int
+	keys            map[rune][2]int
+	forbiddenKey    [2]int
+	initialPosition [2]int
+	position        [2]int
+}
+
+func (p *Pad) Reset() {
+	p.position = p.initialPosition
 }
 
 func (p *Pad) MovesToCode(code string) string {
@@ -106,7 +133,7 @@ func (p *Pad) MovesToCode(code string) string {
 	for _, k := range code {
 		moves = moves + p.Move(p.keys[k]) + "A"
 	}
-	fmt.Println(code, p.position, moves)
+	fmt.Println("Starting at:", p.position, "Code:", code, "Moves:", moves)
 	return moves
 }
 
@@ -152,4 +179,37 @@ func (p *Pad) Move(target [2]int) string {
 
 func part2(lines []string) any {
 	return nil
+}
+
+// Simulate presses and return the resulting code (sequence of keys pressed)
+func TestInputToCode(pad *Pad, input string) string {
+	code := ""
+	p := pad.initialPosition
+	for _, k := range input {
+		switch k {
+		case 'v':
+			p[0]++
+		case '^':
+			p[0]--
+		case '<':
+			p[1]--
+		case '>':
+			p[1]++
+		case 'A':
+			code = code + fmt.Sprintf("%c", KeyByValue(pad.keys, p))
+		}
+		if p == pad.forbiddenKey {
+			panic("moved to forbidden key")
+		}
+	}
+	return code
+}
+
+func KeyByValue(m map[rune][2]int, value [2]int) rune {
+	for k, v := range m {
+		if v == value {
+			return k
+		}
+	}
+	return '!'
 }
