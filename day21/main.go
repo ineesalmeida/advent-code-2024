@@ -34,54 +34,30 @@ func part1(lines []string) any {
 	result := 0
 	for _, line := range lines {
 		n, _ := strconv.Atoi(line[:3])
-		nPress := PressCode(line)
+		numpad := Pad{
+			keys:         numKeys,
+			forbiddenKey: [2]int{0, 3},
+			position:     [2]int{3, 2},
+		}
+		movepad1 := Pad{
+			keys:         moveKeys,
+			forbiddenKey: [2]int{0, 0},
+			position:     [2]int{0, 2},
+		}
+		movepad2 := Pad{
+			keys:         moveKeys,
+			forbiddenKey: [2]int{0, 0},
+			position:     [2]int{0, 2},
+		}
+		moves := numpad.MovesToCode(line)
+		moves2 := movepad1.MovesToCode(moves)
+		moves3 := movepad2.MovesToCode(moves2)
+		nPress := len(moves3)
 		fmt.Println("=================", n, nPress)
 		result += nPress * n
 	}
 	return result
 }
-
-func PressCode(line string) int {
-	start := numKeys['A']
-
-	count := 0
-	for _, k := range line {
-		moves := GetMoves(start, numKeys[k]) + "A"
-		start = numKeys[k]
-		fmt.Println(string(k), moves)
-
-		moves2 := PressMoves(moves, moveKeys['A'])
-		fmt.Println(string(k), moves2, len(moves2))
-
-		aux := strings.Split(moves2, "A")
-		moves3 := ""
-		for _, m := range aux[:len(aux)-1] {
-			moves3 += PressMoves(m+"A", moveKeys['A'])
-		}
-
-		fmt.Println(string(k), moves3, len(moves3))
-		count += len(moves3)
-	}
-	return count
-}
-
-var moveKeys = map[rune][2]int{
-	//     +---+---+
-	//     | ^ | A |
-	// +---+---+---+
-	// | < | v | > |
-	// +---+---+---+
-	'^': {0, 1},
-	'A': {0, 2},
-	'<': {1, 0},
-	'v': {1, 1},
-	'>': {1, 2},
-}
-
-// 0                            2                    9                                  A
-// <            A               ^         A          >       ^           ^ A            v    v  v  A
-// v   <<  A    >>  ^   A       <    A    >  A       v   A   <    ^   A  A >  A         <vA  A  A  >^A
-// <vA <AA >>^A vAA <^A >A      <v<A >>^A vA ^A      <vA >^A <v<A >^A >A A vA ^A <v<A>A>^AAAvA<^A>A
 
 var numKeys = map[rune][2]int{
 	// +---+---+---+
@@ -106,38 +82,71 @@ var numKeys = map[rune][2]int{
 	'A': {3, 2},
 }
 
-func PressMoves(moves string, current [2]int) string {
-	buttons := make(map[rune]int)
-	for _, move := range moves[:len(moves)-1] {
-		buttons[move] += 1
-	}
-
-	result := ""
-	for button, count := range buttons {
-		result += GetMoves(current, moveKeys[button]) + strings.Repeat("A", count)
-		current = moveKeys[button]
-	}
-
-	result += GetMoves(current, moveKeys['A']) + "A"
-	return result
+var moveKeys = map[rune][2]int{
+	//     +---+---+
+	//     | ^ | A |
+	// +---+---+---+
+	// | < | v | > |
+	// +---+---+---+
+	'^': {0, 1},
+	'A': {0, 2},
+	'<': {1, 0},
+	'v': {1, 1},
+	'>': {1, 2},
 }
 
-func GetMoves(start [2]int, target [2]int) string {
-	moves := ""
-	y, x := target[0]-start[0], target[1]-start[1]
+type Pad struct {
+	keys         map[rune][2]int
+	forbiddenKey [2]int
+	position     [2]int
+}
 
-	if x < 0 {
-		moves += strings.Repeat("<", -x)
+func (p *Pad) MovesToCode(code string) string {
+	moves := ""
+	for _, k := range code {
+		moves = moves + p.Move(p.keys[k]) + "A"
 	}
-	if y < 0 {
-		moves += strings.Repeat("^", -y)
+	fmt.Println(code, p.position, moves)
+	return moves
+}
+
+func (p *Pad) Move(target [2]int) string {
+	moves := ""
+	y, x := target[0]-p.position[0], target[1]-p.position[1]
+
+	lr := ""
+	ud := ""
+	if x < 0 {
+		lr += strings.Repeat("<", -x)
+	} else if x > 0 {
+		lr += strings.Repeat(">", x)
 	}
 	if y > 0 {
-		moves += strings.Repeat("v", y)
+		ud += strings.Repeat("v", y)
+	} else if y < 0 {
+		ud += strings.Repeat("^", -y)
 	}
-	if x > 0 {
-		moves += strings.Repeat(">", x)
+	// if there is any left movement, you need to move left before any up/down,
+	// except where it passes over the empty square, where it should do up/down movements first,
+	// then the left.
+	// Otherwise, it should do any up/down movement first then any right movement.
+	if x < 0 {
+		if target[1] == p.forbiddenKey[1] && p.position[0] == p.forbiddenKey[0] {
+			// if going to forbidden column and starting from forbidden row
+			moves = moves + ud + lr
+		} else {
+			moves = moves + lr + ud
+		}
+	} else {
+		if p.position[1] == p.forbiddenKey[1] && target[0] == p.forbiddenKey[0] {
+			// if starting from forbidden column and goinf to forbidden row
+			moves = moves + lr + ud
+		} else {
+			moves = moves + ud + lr
+		}
 	}
+
+	p.position = target
 	return moves
 }
 
